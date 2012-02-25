@@ -1,0 +1,3 @@
+*.pyc
+dxf2gcode_b02_config.cfg
+dxf2gcode_b02_postprocessor.cfg
