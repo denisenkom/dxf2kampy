@@ -34,6 +34,8 @@ from tkMessageBox import showwarning, showerror
 from Tkconstants import END
 from Tkinter import DoubleVar, IntVar
 
+import kamea
+
 from math import degrees
 
 from dxf2gcode_b02_point import PointClass
@@ -217,9 +219,10 @@ class PostprocessorClass:
         self.appname=APPNAME
         self.version=VERSION
         self.date=DATE
-        self.string=''
+        #self.string=''
         self.textbox=textbox
         self.config=config
+        self.instructions = []
         
         # eine ConfigParser Instanz oeffnen und evt. vorhandenes Config File Laden        
         self.parser = ConfigParser.ConfigParser()
@@ -356,9 +359,9 @@ class PostprocessorClass:
 
     def make_new_postpro_file(self):
         self.parser.add_section('General')
-        self.parser.set('General', 'output_format', '.ngc')   
-        self.parser.set('General', 'output_text', 'G-Code for EMC2')   
-        self.parser.set('General', 'output_type', 'g-code')   
+        self.parser.set('General', 'output_format', '.kam')
+        self.parser.set('General', 'output_text', 'Kam-Code for Kamea')
+        self.parser.set('General', 'output_type', 'kam-code')
         
         self.parser.set('General', 'abs_export', 1)
         self.parser.set('General', 'cancel_cc_for_depth', 0)
@@ -416,28 +419,21 @@ class PostprocessorClass:
 
     def write_gcode_be(self,postpro,load_filename):
         #Schreiben in einen String
-        if self.output_type=='g-code':
-            str="(Generated with: %s, Version: %s, Date: %s)\n" %(self.appname,self.version,self.date)
-            str+="(Time: %s)\n" %time.asctime()
-            str+="(Created from file: %s)\n" %load_filename
+        if self.output_type=='kam-code':
+            comment = 'Gen by %s Time: %s Src: %s' % (self.appname,
+                                                      time.asctime(),
+                                                      load_filename)
+            while comment:
+                instr = kamea.Instruction('COMMENT', text=comment[0:30])
+                self.instructions.append(instr)
+                comment = comment[30:]
         elif self.output_type=='dxf':
-            str=''
-            
-        self.string=(str.encode("utf-8"))
-         
-        #Daten aus dem Textfelder an string anhängen
-        self.string+=("%s\n" %postpro.gcode_be)
-
-
-
+            pass
 
     def write_gcode_en(self,postpro):
-        #Daten aus dem Textfelder an string anhängen   
-        self.string+=postpro.gcode_en
-
-        self.make_line_numbers()        
-        
-        return self.string
+        #Daten aus dem Textfelder an string anhängen
+        self.instructions.append(kamea.Instruction('FINISH'))
+        return self.instructions
 
     def make_line_numbers(self):
         line_format='N%i ' 
@@ -458,7 +454,7 @@ class PostprocessorClass:
             
     def chg_feed_rate(self,feed):
         self.feed=feed
-        self.string+=self.make_print_str(self.feed_ch_str) 
+        self.instructions.append(kamea.Instruction('SPEED', speed=feed))
         
     def set_cut_cor(self,cut_cor,Pe):
         self.cut_cor=cut_cor
@@ -511,8 +507,8 @@ class PostprocessorClass:
             self.lz=z_pos
         else:
             self.ze=z_pos
-
-        self.string+=self.make_print_str(self.rap_pos_depth_str)           
+        instr = kamea.Instruction('LINE', dx=0, dy=0, dz=self.ze)
+        self.instructions.append(instr)
          
     def rap_pos_xy(self,Pe):
         if not(self.abs_export):
@@ -520,8 +516,10 @@ class PostprocessorClass:
             self.lPe=Pe
         else:
             self.Pe=Pe
-
-        self.string+=self.make_print_str(self.rap_pos_plane_str)         
+        instr = kamea.Instruction('LINE',
+                                  dx=self.Pe.x, dy=self.Pe.y, dz=0,
+                                  spd=kamea.MAX_SPD)
+        self.instructions.append(instr)
     
     def lin_pol_z(self,z_pos):
         if not(self.abs_export):
@@ -529,8 +527,8 @@ class PostprocessorClass:
             self.lz=z_pos
         else:
             self.ze=z_pos
-
-        self.string+=self.make_print_str(self.lin_mov_depth_str)     
+        instr = kamea.Instruction('LINE', dx=0, dy=0, dz=self.ze-self.lz)
+        self.instructions.append(instr)
         
     def lin_pol_xy(self,Pa,Pe):
         self.Pa=Pa
@@ -539,8 +537,8 @@ class PostprocessorClass:
             self.lPe=Pe
         else:
             self.Pe=Pe
-
-        self.string+=self.make_print_str(self.lin_mov_plane_str)       
+        instr = kamea.Instruction('LINE', dx=self.Pe.x, dy=self.Pe.y, dz=0)
+        self.instructions.append(instr)
 
     def make_print_str(self,string):
         new_string=string

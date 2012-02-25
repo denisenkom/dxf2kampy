@@ -1,3 +1,6 @@
-#Tue Feb 21 22:34:02 EST 2012
+#Fri Feb 24 22:11:55 EST 2012
 eclipse.preferences.version=1
 encoding//src/dxf2gcode_b02.py=cp1252
+encoding//src/dxf2gcode_b02_config.py=cp1252
+encoding//src/dxf2gcode_b02_point.py=cp1252
+encoding//src/dxf2gcode_b02_shape.py=cp1252

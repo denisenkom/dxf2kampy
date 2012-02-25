@@ -28,6 +28,7 @@
 #Loeschen aller Module aus dem Speicher
 import sys, os, string
 import time
+import kamea
 
 if globals().has_key('init_modules'):
     for m in [x for x in sys.modules.keys() if x not in init_modules]:
@@ -498,7 +499,7 @@ class Erstelle_Fenster:
                                               y=config.axis2_st_en.get()))
 
         #Schreiben der Standardwert am Ende        
-        string=postpro.write_gcode_en(postpro)
+        instructions=postpro.write_gcode_en(postpro)
 
         if status==1:
             self.textbox.prt(_("\nSuccessfully generated G-Code"))
@@ -511,15 +512,14 @@ class Erstelle_Fenster:
                     
         #Drucken in den Stdout, speziell fuer EMC2 
         if config.write_to_stdout:
-            print(string)
+            kamea.write(instructions, sys.stdout)
             self.ende()     
         else:
             #Exportieren der Daten
                 try:
                     #Das File oeffnen und schreiben    
-                    f = open(self.save_filename, "w")
-                    f.write(string)
-                    f.close()       
+                    with open(self.save_filename, "wb") as f:
+                        kamea.write(instructions, f)
                 except IOError:
                     showwarning(_("Save As"), _("Cannot save the file."))
             
